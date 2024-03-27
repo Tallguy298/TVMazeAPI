@@ -1,10 +1,15 @@
 #include-once
 #include "TVMazeAPI_UDF_Requirements.au3"
 
-; =========================================
+; ==========================================================
 ; UDF Name.......: TVMaze.com API UDF
 ; Author ........: BB_19
-; =========================================
+; NOTES: ........: Modified by Alexander Gent
+; ...............: Changed Country setting at line 327
+; ...............: Duplicated Names detected at line 523
+; ==========================================================
+
+
 
 
 ; #FUNCTION# ====================================================================================================================
@@ -313,14 +318,19 @@ Func _GetShowInfo($ShowID, $ConvertTimeZone = 0, $SaveShowFiles = 0, $SaveShowFi
 	$Series_INFO[1] = $ShowName
 
 	Local $NetworkName = _Between($SeriesInfo, '"name":"', '",')
+
 	If Not @error Then
 		If (UBound($NetworkName) > 1) Then $NetworkName = $NetworkName[1]
 	EndIf
 	$Series_INFO[2] = $NetworkName
 
-	Local $Country = _Between($SeriesInfo, '"name":"', '",')
+	; CHANGED TO PROPER COUNTRY SETTING
+	Local $Country = _Between($SeriesInfo, '"country":{"name":"', '",')
 	If Not @error Then
-		If (UBound($Country) > 2) Then $Country = $Country[2]
+		If (UBound($Country) > 0) Then $Country = $Country[0]
+	Else
+		Local $Country = _Between($SeriesInfo, '"country":', ',')
+		If (UBound($Country) > 0) Then $Country = $Country[0]
 	EndIf
 	$Series_INFO[11] = $Country
 
@@ -335,7 +345,6 @@ Func _GetShowInfo($ShowID, $ConvertTimeZone = 0, $SaveShowFiles = 0, $SaveShowFi
 	Else
 		$Series_INFO[12] = "-"
 	EndIf
-
 
 	$Series_INFO[11] = $Country
 
@@ -491,9 +500,9 @@ Func _GetShowEpisodes($ShowID, $SaveShowFiles = 0, $SaveShowFilesPath = @TempDir
 		Local $SeriesInfo_EpisodeList = FileRead($SaveShowFilesPath & "\" & $ShowID & ".dat")
 	EndIf
 
-
 	;Split Show Info & Episode List
 	Local $Series_EpisodeList = _Between($SeriesInfo_EpisodeList, '"episodeswithspecials":', "")
+
 	If Not @error Then
 		$Series_EpisodeList = $Series_EpisodeList[0]
 	Else
@@ -510,6 +519,14 @@ Func _GetShowEpisodes($ShowID, $SaveShowFiles = 0, $SaveShowFilesPath = @TempDir
 
 	Local $Seasons = _Between($Series_EpisodeList, '"season":', ",")
 	Local $EpisodeNames = _Between($Series_EpisodeList, '"name":"', '",')
+
+	; MODIFIED FOR DUPLICATE NAMES FIELD!!
+	$zCount = 0
+	Do
+		$zCount += 1
+		_ArrayDelete($EpisodeNames , $zCount)
+	Until $zCount = UBound($EpisodeNames)
+
 	Local $EpisodeAirDateTimes = _Between($Series_EpisodeList, '"airstamp":"', '",')
 	If @error Then Return SetError(2)
 	Local $RunTimes = _Between($Series_EpisodeList, '"runtime":', ",")
@@ -585,6 +602,10 @@ Func _GetShowEpisodes($ShowID, $SaveShowFiles = 0, $SaveShowFilesPath = @TempDir
 					ExitLoop
 				EndIf
 			EndIf
+
+			;_ArrayDelete($TV_Show , $i + 1)
+
+
 		Next
 
 		If $GetLastAndNextEpisodeOnly = 1 Then
